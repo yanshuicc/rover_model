@@ -22,7 +22,7 @@ function varargout = rover_model(varargin)
 
 % Edit the above text to modify the response to help untitled1
 
-% Last Modified by GUIDE v2.5 22-Jun-2017 07:58:59
+% Last Modified by GUIDE v2.5 22-Jun-2017 09:01:32
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -72,12 +72,12 @@ start(handles.ht);%启动定时器,对应的stop(handles.ht)
 global sensors_pos
 sensors_pos = 1000*rand(3,2);
 %传感器向量
-%剩余硬盘 天气 电池
+%剩余硬盘 天气 电池 数据紧急度
 global sensors 
 sensors = [ 
-    10*1024*1024 0 100;
-    10*1024*1024 0 100;
-    10*1024*1024 0 100;    
+    10*1024*1024 0 100 0;
+    10*1024*1024 0 100 0;
+    10*1024*1024 0 100 0;    
 ];
 %硬盘消耗速度
 global buffer_cost
@@ -88,7 +88,7 @@ charge = 1;
 %耗电速度
 global cost
 cost = 1;
-%紧急度出现概率,
+%紧急度出现的概率分母
 global urgency
 urgency = [
     50;
@@ -97,7 +97,15 @@ urgency = [
 ];
 global rover_pos
 rover_pos = 1000*rand(1,2);
-
+%假定恶劣天气点从右往左移动
+global weather_pos
+weather_pos = [
+    
+];
+global weather_radius
+weather_radius = [
+    
+];
 draw_init()
 
 function draw_init()
@@ -122,6 +130,7 @@ function dispNow(hObject,eventdata,handles)
     m = size(sensors);
     global charge
     global cost
+    global urgency
     for i=1:m
         % 充电耗电
         if time>6&&time<18
@@ -136,11 +145,16 @@ function dispNow(hObject,eventdata,handles)
             sensors(i,2)=sensors(i,2)-512;
         end
         % 紧急度
+        x = randi(1,1, urgency+1);
+        if x==urgency
+            sensors(i,:)=sensors(i,:)+x;
+        end
     end
 
     set(handles.time_dis,'string',time);
     
 % --- Outputs from this function are returned to the command line.
+% --- 命令行的输出函数
 function varargout = untitled1_OutputFcn(hObject, eventdata, handles)
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
@@ -236,21 +250,38 @@ set(hObject, 'String', {'plot(rand(5))', 'plot(sin(1:0.01:25))', 'bar(1:.5:10)',
 
 
 % --- Executes on button press in pushbutton4.
-function pushbutton4_Callback(hObject, eventdata, handles)
+function start_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton4 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 
 % --- Executes on button press in pushbutton5.
-function pushbutton5_Callback(hObject, eventdata, handles)
+function pause_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton5 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 
 % --- Executes on button press in pushbutton6.
-function pushbutton6_Callback(hObject, eventdata, handles)
+function add_sensor_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton6 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on button press in update.
+function update_Callback(hObject, eventdata, handles)
+% hObject    handle to update (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+    axes(handles.axes1);
+    cla;
+
+    popup_sel_index = get(handles.popupmenu1, 'Value');
+    draw_init()
+    switch popup_sel_index
+        case 1
+        case 2
+            plot(sin(1:0.01:25.99));
+    end
