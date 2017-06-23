@@ -191,8 +191,16 @@ function dispNow(hObject,eventdata,handles)
             dis = ((weather_pos(i,1)-sensor_pos(j,1))^2+(weather_pos(i,2)-sensor_pos(j,2))^2)^0.5;
             if dis < weather_radius(i,1)
                 sensors(j,2)=3;
-            elseif
-                !!!!!!!
+            elseif dis < weather_radius(i,2)
+                if sensors(j,2)<3
+                    sensors(j,2)=2;
+                end
+            elseif dis < weather_radius(i,3)
+                if sensors(j,2)<2
+                    sensors(j,2)=1;
+                end
+            else
+                sensors(j,2)=0;
             end
         end
     end
