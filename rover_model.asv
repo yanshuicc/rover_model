@@ -103,9 +103,9 @@ weather_pos = 1000*rand(3,2);
 %恶劣天气点的半径，分别是差/中/良的半径
 global weather_radius
 weather_radius = [
-    300, 40, 20;
-    10, 30, 10;
-    400, 20, 10
+    100, 40, 20;
+    60, 30, 10;
+    40, 20, 10
 ];
 draw_init()
 %假定rover和恶劣天气的移动速度都是1
@@ -134,7 +134,11 @@ function draw_init()
     global weather_pos
     global weather_p1
     global weather_radius
-    %weather_p1 = scatter(weather_pos(:,1),weather_pos(:,2),weather_radius(:,1));
+    weather_p1 = scatter(weather_pos(:,1),weather_pos(:,2),weather_radius(1,:),'filled');
+    global weather_p2
+    weather_p2 = scatter(weather_pos(:,1),weather_pos(:,2),weather_radius(2,:),'filled');
+    global weather_p3
+    weather_p3 = scatter(weather_pos(3,1),weather_pos(:,2),weather_radius(3,:),'filled');
     
     global rover_pos
     rover_pos = 1000*rand(1,2);
