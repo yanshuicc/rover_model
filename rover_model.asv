@@ -71,7 +71,7 @@ sensors_pos = 1000*rand(3,2);
 dis=((rover_pos(1,1)-sensors_pos(:,1)).^2+(rover_pos(1,2)-sensors_pos(:,2)).^2).^0.5;
 
 %传感器向量，也是训练的输入数据
-%剩余硬盘 天气 电池 数据紧急度 小车和传感器的距离
+%剩余硬盘[0-10*1024*1024] 天气[优/良/中/差0/1/2/3] 电池[3-100] 数据紧急度[1-10] 小车和传感器的距离
 global sensors 
 sensors = [ 
     10*1024*1024 0 100 0;
@@ -103,14 +103,14 @@ weather_pos = 1000*rand(3,2);
 %恶劣天气点的半径，分别是差/中/良的半径
 global weather_radius
 weather_radius = [
-    100, 40, 20;
-    60, 30, 10;
-    40, 20, 10
+    300, 40, 20;
+    30, 20, 10;
+    400, 20, 10
 ];
 draw_init()
-%假定rover和恶劣天气的移动速度都是1
+%假定rover和恶劣天气的移动速度都是10
 global speed
-speed = 1;
+speed = 10;
 
 %定义一个定时器，添加到handles结构体中，方便后面使用
 global time 
@@ -131,14 +131,10 @@ function draw_init()
     global sensors_p
     sensors_p = scatter(x,y,80,'filled');
 
-    global weather_pos
-    global weather_p1
-    global weather_radius
-    weather_p1 = scatter(weather_pos(:,1),weather_pos(:,2),weather_radius(1,:),'filled');
-    global weather_p2
-    weather_p2 = scatter(weather_pos(:,1),weather_pos(:,2),weather_radius(2,:),'filled');
-    global weather_p3
-    weather_p3 = scatter(weather_pos(3,1),weather_pos(:,2),weather_radius(3,:),'filled');
+    %global weather_pos
+    %global weather_p
+    %global weather_radius
+    %weather_p = scatter(weather_pos(1,1),weather_pos(1,2),weather_radius(1,1));
     
     global rover_pos
     rover_pos = 1000*rand(1,2);
@@ -179,11 +175,40 @@ function dispNow(hObject,eventdata,handles)
     end
 
     
+    %更新天气移动
+    global weather_pos
+    global weather_radius
+    global sensor_pos
+    weather_pos(:,1) = weather_pos(:,1)+10;
+    [wm,wn] = size(weather_pos);
+    for i=1:wm
+        if weather_pos(i,1)-weather_radius(i,1)>1000
+            weather_pos(i,1)=-weather_radius(i,1);
+            weather_pos(i,2)=1000*rand(1,1);
+        end
+        %根据天气恶劣点，更新每个传感器的天气状态
+        for j=1:m
+            dis = ((weather_pos(i,1)-sensor_pos(j,1)).^2+(weather_pos(i,2)-sensor_pos(j,2)).^2).^0.5;
+            if(dis <
+        end
+    end
+    
+    
+            
+    
+    %global weather_p
+    %set(weather_p,'XData', weather_pos(1,1),'YData',weather_pos(1,2));
+    
+    % 更新小车移动
     global rover_pos
-    rover_pos(1,1) = rover_pos(1,1)+1;
+    rover_pos(1,1) = rover_pos(1,1)+10;
     global rover_p
     set(rover_p,'Position', [rover_pos(1:1,1:1),rover_pos(1:1,2:2),15,15]);
-    set(handles.time_dis,'string',[num2str(time),'h']);
+    
+    % 更新时间显示
+    time_text = ['time:',num2str(time),'h'];
+    text = [time_text];
+    set(handles.time_dis,'string',text);
     
 % --- Outputs from this function are returned to the command line.
 % --- 命令行的输出函数
