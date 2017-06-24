@@ -1,5 +1,5 @@
 function varargout = rover_model(varargin)
-% UNTITLED1 MATLAB code for untitled1.fig
+% UNTITLED1 MATLAB code for rover_model.fig
 %      UNTITLED1, by itself, creates a new UNTITLED1 or raises the existing
 %      singleton*.
 %
@@ -45,7 +45,7 @@ end
 
 
 
-% --- Executes just before untitled1 is made visible.
+% --- Executes just before rover_model is made visible.
 function untitled1_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
@@ -62,11 +62,11 @@ guidata(hObject, handles);
 
 % 小车坐标
 global rover_pos
-rover_pos = 1000*rand(1,2);
+rover_pos = randi(1000,1,2);
 
 % 传感器坐标 横坐标 纵坐标
 global sensors_pos
-sensors_pos = 1000*rand(3,2);
+sensors_pos = randi(1000,3,2);
 %小车到每个传感器距离
 dis=((rover_pos(1,1)-sensors_pos(:,1)).^2+(rover_pos(1,2)-sensors_pos(:,2)).^2).^0.5;
 
@@ -74,8 +74,8 @@ dis=((rover_pos(1,1)-sensors_pos(:,1)).^2+(rover_pos(1,2)-sensors_pos(:,2)).^2).
 %剩余硬盘[0-10*1024*1024] 天气[优/良/中/差0/1/2/3] 电池[3-100] 数据紧急度[1-10] 小车和传感器的距离
 global sensors 
 sensors = [ 
-    10*1024*1024 0 100 0;
-    10*1024*1024 0 100 0;
+    10*1024*1024 0 50 0;
+    10*1024*1024 0 80 0;
     10*1024*1024 0 100 0;    
 ];
 sensors=[sensors, dis];
@@ -85,7 +85,7 @@ global buffer_cost
 buffer_cost = 512;
 %充电速度
 global charge
-charge = 1;
+charge = 0.8;
 %耗电速度
 global cost
 cost = 1;
@@ -112,6 +112,38 @@ draw_init()
 global speed
 speed = 10;
 
+%r             读出
+%w             写入（文件若不存在，自动创建）
+%a             后续写入（文件若不存在，自动创建）
+%r+            读出和写入（文件应已存在）
+%w+            重新刷新写入，（文件若不存在，自动创建）
+%a+            后续写入（文件若不存在，自动创建））
+%w             重新写入，但不自动刷新
+%a             后续写入，但不自动刷新
+%生成文件
+global output_flag
+output_flag = 1;
+if output_flag == 1
+    filename = datestr(now,1);
+    filename = [filename,'_setting.txt'];
+    fid=fopen(filename,'w+');
+    fprintf(fid,'%g\t',sensors_pos);
+    fprintf(fid,'\n');
+    fprintf(fid,'%g\t',sensors);
+    fprintf(fid,'\n');
+    fprintf(fid,'%g\t',urgency);
+    fprintf(fid,'\n');
+    fprintf(fid,'%g\t',rover_pos);
+    fprintf(fid,'\n');
+    fprintf(fid,'%g\t',weather_pos);
+    fprintf(fid,'\n');
+    fprintf(fid,'%g\t',weather_radius);
+    fprintf(fid,'\n');
+    fprintf(fid,'%g\t',speed);
+    fprintf(fid,'\n');
+    fclose(fid);
+end
+
 %定义一个定时器，添加到handles结构体中，方便后面使用
 global time 
 time = 0;
@@ -122,10 +154,12 @@ set(handles.ht,'TimerFcn',{@dispNow, handles});%定时器的执行函数
 start(handles.ht);%启动定时器,对应的stop(handles.ht)  
 
 
+
+
 % 初始化窗口绘图
 function draw_init()
     global sensors_pos
-    sensors_pos = 1000*rand(3,2);
+    sensors_pos = randi(1000,3,2);
     x = sensors_pos(:,1:1);
     y = sensors_pos(:,2:2);
     global sensors_p
@@ -137,7 +171,7 @@ function draw_init()
     %weather_p = scatter(weather_pos(1,1),weather_pos(1,2),weather_radius(1,1));
     
     global rover_pos
-    rover_pos = 1000*rand(1,2);
+    rover_pos = randi(1000,1,2);
     global rover_p
     rover_p = rectangle('Position',[rover_pos(1:1,1:1),rover_pos(1:1,2:2),15,15],'FaceColor','black','EdgeColor','black');
     axis([0 1000 0 1000])
@@ -147,8 +181,9 @@ function draw_init()
 function dispNow(hObject,eventdata,handles)
     global time
     time = time + 1;
+    global speed
     global sensors
-    sensors(:,1) = sensors(:,1)-3;
+    sensors(:,1) = sensors(:,1)-512;
     [m,n] = size(sensors);
     global charge
     global cost
@@ -178,7 +213,7 @@ function dispNow(hObject,eventdata,handles)
     %更新天气移动
     global weather_pos
     global weather_radius
-    global sensor_pos
+    global sensors_pos
     weather_pos(:,1) = weather_pos(:,1)+10;
     [wm,wn] = size(weather_pos);
     for i=1:wm
@@ -188,7 +223,7 @@ function dispNow(hObject,eventdata,handles)
         end
         %根据天气恶劣点，更新每个传感器的天气状态
         for j=1:m
-            dis = ((weather_pos(i,1)-sensor_pos(j,1))^2+(weather_pos(i,2)-sensor_pos(j,2))^2)^0.5;
+            dis = ((weather_pos(i,1)-sensors_pos(j,1))^2+(weather_pos(i,2)-sensors_pos(j,2))^2)^0.5;
             if dis < weather_radius(i,1)
                 sensors(j,2)=3;
             elseif dis < weather_radius(i,2)
@@ -221,6 +256,31 @@ function dispNow(hObject,eventdata,handles)
     time_text = ['time:',num2str(time),'h'];
     text = [time_text];
     set(handles.time_dis,'string',text);
+    
+    % 记录输出
+    
+    global output_flag
+    output_flag = 1;
+    if output_flag == 1
+        filename = datestr(now,1);
+        filename = [filename,'_run.txt'];
+        fid=fopen(filename,'a');
+        fprintf(fid,'%g\t',sensors_pos);
+        fprintf(fid,'\n');
+        fprintf(fid,'%g\t',sensors);
+        fprintf(fid,'\n');
+        fprintf(fid,'%g\t',urgency);
+        fprintf(fid,'\n');
+        fprintf(fid,'%g\t',rover_pos);
+        fprintf(fid,'\n');
+        fprintf(fid,'%g\t',weather_pos);
+        fprintf(fid,'\n');
+        fprintf(fid,'%g\t',weather_radius);
+        fprintf(fid,'\n');
+        fprintf(fid,'%g\t',speed);
+        fprintf(fid,'\n');
+    end
+    
     
 % --- Outputs from this function are returned to the command line.
 % --- 命令行的输出函数
