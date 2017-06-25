@@ -47,111 +47,131 @@ end
 
 % --- Executes just before rover_model is made visible.
 function untitled1_OpeningFcn(hObject, eventdata, handles, varargin)
-% This function has no output args, see OutputFcn.
-% hObject    handle to figure
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-% varargin   command line arguments to untitled1 (see VARARGIN)
+    % This function has no output args, see OutputFcn.
+    % hObject    handle to figure
+    % eventdata  reserved - to be defined in a future version of MATLAB
+    % handles    structure with handles and user data (see GUIDATA)
+    % varargin   command line arguments to untitled1 (see VARARGIN)
 
-% Choose default command line output for untitled1
-handles.output = hObject;
+    % Choose default command line output for untitled1
+    handles.output = hObject;
 
-% Update handles structure
-guidata(hObject, handles);
+    % Update handles structure
+    guidata(hObject, handles);
 
 
-% 小车坐标
-global rover_pos
-rover_pos = randi(1000,1,2);
+    % 小车坐标
+    global rover_pos
+    rover_pos = randi(1000,1,2);
 
-% 传感器坐标 横坐标 纵坐标
-global sensors_pos
-sensors_pos = randi(1000,3,2);
-%小车到每个传感器距离
-dis=((rover_pos(1,1)-sensors_pos(:,1)).^2+(rover_pos(1,2)-sensors_pos(:,2)).^2).^0.5;
+    % 传感器坐标 横坐标 纵坐标
+    global sensors_pos
+    sensors_pos = randi(1000,3,2);
+    %小车到每个传感器距离
+    dis=((rover_pos(1,1)-sensors_pos(:,1)).^2+(rover_pos(1,2)-sensors_pos(:,2)).^2).^0.5;
 
-%传感器向量，也是训练的输入数据
-%剩余硬盘[0-10*1024*1024] 天气[优/良/中/差0/1/2/3] 电池[3-100] 数据紧急度[1-10] 小车和传感器的距离
-global sensors 
-sensors = [ 
-    10*1024*1024 0 50 0;
-    10*1024*1024 0 80 0;
-    10*1024*1024 0 100 0;    
-];
-sensors=[sensors, dis];
+    %传感器向量，也是训练的输入数据
+    %剩余硬盘[0-10*1024*1024] 天气[优/良/中/差4/3/2/1] 电池[3-100](初始不都是满电状态) 数据紧急度[1-5] 小车和传感器的距离
+    global sensors 
+    % 最大的硬盘存储空间
+    global max_buffer 
+    max_buffer = 10*1024*1024;
+    sensors = [ 
+        max_buffer 4 50 0;
+        max_buffer 4 80 0;
+        max_buffer 4 100 0;
+    ];
+    sensors=[sensors, dis];
 
-%硬盘消耗速度
-global buffer_cost
-buffer_cost = 512;
-%充电速度
-global charge
-charge = 0.8;
-%耗电速度
-global cost
-cost = 1;
-%紧急度出现的概率分母
-global urgency
-urgency = [
-    50;
-    80;
-    100
-];
+    %硬盘消耗速度
+    global buffer_cost
+    buffer_cost = 512;
+    %充电速度
+    global charge
+    charge = 0.8;
+    %耗电速度
+    global cost
+    cost = 1;
+    %紧急度出现的概率分母
+    global urgency
+    urgency = [
+        50;
+        80;
+        100
+    ];
 
-%假定恶劣天气点从右往左移动
-global weather_pos
-weather_pos = 1000*rand(3,2);
-%恶劣天气点的半径，分别是差/中/良的半径
-global weather_radius
-weather_radius = [
-    300, 40, 20;
-    30, 20, 10;
-    400, 20, 10
-];
-draw_init()
-%假定rover和恶劣天气的移动速度都是10
-global speed
-speed = 10;
+    %假定恶劣天气点从右往左移动
+    global weather_pos
+    weather_pos = 1000*rand(3,2);
+    %恶劣天气点的半径，分别是差/中/良的半径
+    global weather_radius
+    weather_radius = [
+        300, 40, 20;
+        30, 20, 10;
+        400, 20, 10
+    ];
+    draw_init()
+    %假定rover和恶劣天气的移动速度都是10
+    global speed
+    speed = 10;
 
-%r             读出
-%w             写入（文件若不存在，自动创建）
-%a             后续写入（文件若不存在，自动创建）
-%r+            读出和写入（文件应已存在）
-%w+            重新刷新写入，（文件若不存在，自动创建）
-%a+            后续写入（文件若不存在，自动创建））
-%w             重新写入，但不自动刷新
-%a             后续写入，但不自动刷新
-%生成文件
-global output_flag
-output_flag = 1;
-if output_flag == 1
-    filename = datestr(now,1);
-    filename = [filename,'_setting.txt'];
-    fid=fopen(filename,'w+');
-    fprintf(fid,'%g\t',sensors_pos);
-    fprintf(fid,'\n');
-    fprintf(fid,'%g\t',sensors);
-    fprintf(fid,'\n');
-    fprintf(fid,'%g\t',urgency);
-    fprintf(fid,'\n');
-    fprintf(fid,'%g\t',rover_pos);
-    fprintf(fid,'\n');
-    fprintf(fid,'%g\t',weather_pos);
-    fprintf(fid,'\n');
-    fprintf(fid,'%g\t',weather_radius);
-    fprintf(fid,'\n');
-    fprintf(fid,'%g\t',speed);
-    fprintf(fid,'\n');
-    fclose(fid);
-end
+    %r             读出
+    %w             写入（文件若不存在，自动创建）
+    %a             后续写入（文件若不存在，自动创建）
+    %r+            读出和写入（文件应已存在）
+    %w+            重新刷新写入，（文件若不存在，自动创建）
+    %a+            后续写入（文件若不存在，自动创建））
+    %w             重新写入，但不自动刷新
+    %a             后续写入，但不自动刷新
+    %生成配置文件
+    global output_flag
+    output_flag = 1;
+    global output_setting_flag
+    output_setting_flag = 0;
+    global input_setting_flag
+    input_setting_flag = 1;
 
-%定义一个定时器，添加到handles结构体中，方便后面使用
-global time 
-time = 0;
-handles.ht=timer;  
-set(handles.ht,'ExecutionMode','FixedRate');%ExecutionMode   执行的模式  
-set(handles.ht,'Period',1);%周期
-set(handles.ht,'TimerFcn',{@dispNow, handles});%定时器的执行函数  
-start(handles.ht);%启动定时器,对应的stop(handles.ht)  
+    if output_setting_flag == 1
+        filename = datestr(now,1);
+        filename = [filename,'_setting.txt'];
+        fid=fopen(filename,'w+');
+        fprintf(fid,'%g\t',sensors_pos);
+        fprintf(fid,'\n');
+        fprintf(fid,'%g\t',urgency);
+        fprintf(fid,'\n');
+        fprintf(fid,'%g\t',weather_radius);
+        fprintf(fid,'\n');
+        fprintf(fid,'%g\t',speed);
+        fprintf(fid,'\n');
+        fclose(fid);
+    end
+    if input_setting_flag == 1
+        filename = datestr(now,1);
+        filename = [filename,'_setting.txt'];
+        fid=fopen(filename,'r');
+        tline=fgetl(fid); 
+        sensors_pos_vector = str2num(tline);
+        [m,n] = size(sensors_pos_vector);
+        sensors_pos = reshape(sensors_pos_vector,n/2,2);
+        tline=fgetl(fid); 
+        urgency_vector = str2num(tline);
+        urgency = reshape(urgency_vector,3,1);
+        tline=fgetl(fid); 
+        weather_vector = str2num(tline);
+        [m,n] = size(weather_vector);
+        weather_radius = reshape(weather_vector,n/3,3);
+        tline=fgetl(fid); 
+        speed = str2double(tline);
+    end
+
+    %定义一个定时器，添加到handles结构体中，方便后面使用
+    global time 
+    time = 0;
+    handles.ht=timer;  
+    set(handles.ht,'ExecutionMode','FixedRate');%ExecutionMode   执行的模式  
+    set(handles.ht,'Period',1);%周期
+    set(handles.ht,'TimerFcn',{@dispNow, handles});%定时器的执行函数  
+    start(handles.ht);%启动定时器,对应的stop(handles.ht)  
 
 
 
@@ -181,7 +201,6 @@ function draw_init()
 function dispNow(hObject,eventdata,handles)
     global time
     time = time + 1;
-    global speed
     global sensors
     sensors(:,1) = sensors(:,1)-512;
     [m,n] = size(sensors);
@@ -204,8 +223,8 @@ function dispNow(hObject,eventdata,handles)
         % 紧急度
         x = randi(urgency(i,1), 1,1);
         if x==urgency
-            % i行4列产生紧急度为1-10的紧急数据
-            sensors(i,4)=sensors(i,4)+randi(10,1,1);
+            % i行4列产生紧急度为1-5的紧急数据
+            sensors(i,4)=sensors(i,4)+randi(5,1,1);
         end
     end
 
@@ -246,9 +265,21 @@ function dispNow(hObject,eventdata,handles)
     %global weather_p
     %set(weather_p,'XData', weather_pos(1,1),'YData',weather_pos(1,2));
     
+    
     % 更新小车移动
+    sensor_id = judge_sensor();
+    direction = judge_direction(sensor_id);
     global rover_pos
-    rover_pos(1,1) = rover_pos(1,1)+10;
+    global speed
+    if direction == 1
+        rover_pos = rover_pos+[-1,0]*speed;
+    elseif direction ==2
+        rover_pos = rover_pos+[1,0]*speed;
+    elseif direction ==3
+        rover_pos = rover_pos+[0,-1]*speed;
+    elseif direction ==4
+        rover_pos = rover_pos+[0,1]*speed;
+    end
     global rover_p
     set(rover_p,'Position', [rover_pos(1:1,1:1),rover_pos(1:1,2:2),15,15]);
     
@@ -257,30 +288,79 @@ function dispNow(hObject,eventdata,handles)
     text = [time_text];
     set(handles.time_dis,'string',text);
     
-    % 记录输出
-    
+    % 输出运行日志，输出记录所有运行时变化的数据
     global output_flag
-    output_flag = 1;
     if output_flag == 1
         filename = datestr(now,1);
         filename = [filename,'_run.txt'];
         fid=fopen(filename,'a');
-        fprintf(fid,'%g\t',sensors_pos);
-        fprintf(fid,'\n');
+        fprintf(fid,'%g\t',time);
         fprintf(fid,'%g\t',sensors);
-        fprintf(fid,'\n');
         fprintf(fid,'%g\t',urgency);
-        fprintf(fid,'\n');
         fprintf(fid,'%g\t',rover_pos);
-        fprintf(fid,'\n');
         fprintf(fid,'%g\t',weather_pos);
-        fprintf(fid,'\n');
-        fprintf(fid,'%g\t',weather_radius);
-        fprintf(fid,'\n');
-        fprintf(fid,'%g\t',speed);
-        fprintf(fid,'\n');
+        fclose(fid);
+    end
+    % 输出训练模型,输出仅训练用到的数据
+    if output_flag == 1
+        filename = datestr(now,1);
+        filename = [filename,'_train_model.txt'];
+        fid=fopen(filename,'a');
+        fprintf(fid,'%g\t',sensors);
+        fprintf(fid,'%g\t',rover_pos);
+        fprintf(fid,'%g\t',sensor_id);
+        fclose(fid);
     end
     
+    
+
+    
+    
+% 根据剩余电量 天气恶劣度 数据紧急度 距离 返回优先级最高的sensor编号
+function sensor_id = judge_sensor()
+    global max_buffer
+    global sensors
+    [m,n] = size(sensors);
+    res = zeros(m,1);
+    for i=1:m
+        res(i,1) = res(i,1)+(max_buffer-sensors(i,1))/max_buffer*0.2;
+        res(i,1) = res(i,1)+sensors(i,2)/4*0.2;
+        res(i,1) = res(i,1)+(100-sensors(i,3))*0.1;
+        % 5级别的紧急事件假定为特级事件，优先级为1
+        if sensors(i,4) == 5
+            res(i,1) = res(i,1)+1;
+        else        
+            res(i,1) = res(i,1)+sensors(i,4)/5*0.3;
+        end
+        res(i,1) = res(i,1)+sensors(i,5)/(1000^2+1000^2)^0.5;
+    end
+    [~,sensor_id] = max(res);
+
+% 根据sensor的位置和rover的位置判断移动方向
+function direction = judge_direction(sensor_id)
+    global rover_pos
+    global sensors_pos
+    sensor_pos = sensors_pos(sensor_id,:);
+    dis_vec = rover_pos - sensor_pos;
+    if abs(dis_vec(1,1))>abs(dis_vec(1,2))
+        if dis_vec(1,1) > 0
+            %[-1, 0]
+            direction = 1;
+        else
+            %[1, 0]
+            direction = 2;
+        end
+    else
+        if dis_vec(1,2) > 0
+            %[0, -1]
+            direction = 3;
+        else
+            %[0, 1]
+            direction = 4;
+        end        
+    end
+    
+function last_line_data = read_last_line()
     
 % --- Outputs from this function are returned to the command line.
 % --- 命令行的输出函数
