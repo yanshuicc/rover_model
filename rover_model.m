@@ -56,8 +56,6 @@ function untitled1_OpeningFcn(hObject, eventdata, handles, varargin)
     % Choose default command line output for untitled1
     handles.output = hObject;
 
-    % Update handles structure
-    guidata(hObject, handles);
 
 
     % 小车坐标
@@ -132,9 +130,9 @@ function untitled1_OpeningFcn(hObject, eventdata, handles, varargin)
     global output_flag
     output_flag = 1;
     global output_setting_flag
-    output_setting_flag = 1;
+    output_setting_flag = 0;
     global input_setting_flag
-    input_setting_flag = 0;
+    input_setting_flag = 1;
 
     if output_setting_flag == 1
         filename = datestr(now,1);
@@ -160,7 +158,7 @@ function untitled1_OpeningFcn(hObject, eventdata, handles, varargin)
         sensors_pos = reshape(sensors_pos_vector,n1/2,2);
         tline=fgetl(fid); 
         urgency_vector = str2num(tline);
-        urgency = reshape(urgency_vector,3,1);
+        urgency = reshape(urgency_vector,5,1);
         tline=fgetl(fid); 
         weather_vector = str2num(tline);
         [~,n2] = size(weather_vector);
@@ -176,18 +174,37 @@ function untitled1_OpeningFcn(hObject, eventdata, handles, varargin)
     set(handles.ht,'ExecutionMode','FixedRate');%ExecutionMode   执行的模式  
     set(handles.ht,'Period',0.1); %周期,单位为秒
     set(handles.ht,'TimerFcn',{@dispNow, handles});%定时器的执行函数  
-    start(handles.ht);%启动定时器,对应的stop(handles.ht)  
+    global start_flag
+    start_flag = 2;
+    %start(handles.ht);%启动定时器,对应的stop(handles.ht)  
 
 
+    % Update handles structure
+    guidata(hObject, handles);
 
 
 % 初始化窗口绘图
 function draw_init()
     global sensors_pos
+    %global weather_pos
     x = sensors_pos(:,1:1);
+    %x = [x; weather_pos(:,1:1)];
     y = sensors_pos(:,2:2);
+    %y = [y; weather_pos(:,2:2)];
     global sensors_p
     sensors_p = scatter(x,y,80,'filled');
+    
+    %[sensor_count,~] = size(sensors_pos);
+    %[weather_count,~] = size(weather_pos);
+    %radius = zeros(1,sensor_count+weather_count);
+    %global weather_radius
+    %for i=1:sensor_count
+    %    radius(1,i)=80;
+    %end
+    %for i=sensor_count+1:sensor_count+weather_count
+    %    radius(1,i)=weather_radius(1,i-sensor_count)*100;
+    %end
+    %sensors_p = scatter(x,y,radius);
 
     %global weather_pos
     %global weather_p
@@ -210,28 +227,34 @@ function dispNow(hObject,eventdata,handles)
         day_count = day_count+1;
     end
     global sensors
-    [m,n] = size(sensors);
+    [m,~] = size(sensors);
     global charge
     global cost
     global urgency
     for i=1:m
+        % 电量充足的标志,有电的时候才会消耗硬盘存储空间
+        battery_flag = 1;
         % 充电耗电
         if hour_count>6&&hour_count<18
             if sensors(i,3)<100
                 sensors(i, 3) = sensors(i,3)+charge;
             end 
-        else
+        elseif sensors(i,3)-cost >3
             sensors(i,3) = sensors(i,3)-cost;
+        else
+            battery_flag=0;
         end
-        % 硬盘空间消耗
-        if sensors(i,1)-1>0
-            sensors(i,1)=sensors(i,1)-1;
-        end
-        % 紧急度
-        x = randi(urgency(i,1), 1,1);
-        if x==urgency(i,1)
-            % i行4列产生紧急度为1-5的紧急数据
-            sensors(i,4)=sensors(i,4)+randi(5,1,1);
+        if battery_flag == 1
+            % 硬盘空间消耗
+            if sensors(i,1)-1>0
+                sensors(i,1)=sensors(i,1)-1;
+            end
+            % 紧急度
+            x = randi(urgency(i,1), 1,1);
+            if x==urgency(i,1)
+                % i行4列产生紧急度为1-5的紧急数据
+                sensors(i,4)=sensors(i,4)+randi(5,1,1);
+            end
         end
     end
 
@@ -245,7 +268,7 @@ function dispNow(hObject,eventdata,handles)
     for i=1:wm
         if weather_pos(i,1)-weather_radius(i,1)>1000
             weather_pos(i,1)=-weather_radius(i,1);
-            weather_pos(i,2)=1000*rand(1,1);
+            weather_pos(i,2)=randi(1000,1,1);
         end
         %根据天气恶劣点，更新每个传感器的天气状态
         for j=1:m
@@ -264,14 +287,10 @@ function dispNow(hObject,eventdata,handles)
                 sensors(j,2)=0;
             end
         end
-    end
-    
-    
-            
+    end    
     
     %global weather_p
     %set(weather_p,'XData', weather_pos(1,1),'YData',weather_pos(1,2));
-    
     
     % 更新小车移动
     sensor_id = judge_sensor();
@@ -327,9 +346,10 @@ function dispNow(hObject,eventdata,handles)
         filename = datestr(now,1);
         filename = [filename,'_train_model.txt'];
         fid=fopen(filename,'a');
+        fprintf(fid,'%g\t',sensor_id);
         fprintf(fid,'%g\t',sensors);
         fprintf(fid,'%g\t',rover_pos);
-        fprintf(fid,'%g\t',sensor_id);
+        fprintf(fid,'\n');
         fclose(fid);
     end
     
@@ -383,15 +403,21 @@ function direction = judge_direction(sensor_id)
         end        
     end
     
+% 从运行保存的状态，继续上次的运行
 function read_last_line(m1,m2)
         filename = datestr(now,1);
         filename = [filename,'_run.txt'];
+        file = dir(filename);
+        if file.bytes == 0
+            return
+        end
         fid=fopen(filename,'r');
         row=0;
         while ~feof(fid) % 是否读取到文件结尾
             line=fgetl(fid); % 或者fgetl
             row=row+1; % 行数累加
         end
+        global day_count
         global hour_count 
         S = regexp(line, '\t', 'split');
         [~,sn] = size(S);
@@ -399,13 +425,14 @@ function read_last_line(m1,m2)
         for i=1:sn-1
             vector(1,i) = str2double(S(1,i));
         end
-        hour_count = vector(1,1);
+        day_count = vector(1,1);
+        hour_count = vector(1,2);
         global sensors
-        sensors = reshape(vector(1,2:2+m1*5),m1,5);
+        sensors = reshape(vector(1,3:3+m1*5-1),m1,5);
         global rover_pos
-        rover_pos = reshape(vector(1,2+m1*5+1:2+m1*5+2),1,2);
+        rover_pos = reshape(vector(1,3+m1*5:3+m1*5+1),1,2);
         global weather_pos
-        weather_pos = reshape(1,vector(2+m1*5+2:2+m1*5+2+m2*2),m2,2);
+        weather_pos = reshape(vector(1,3+m1*5+1:3+m1*5+1+m2*2-1),m2,2);
         fclose(fid);
 
     
@@ -416,7 +443,6 @@ function varargout = untitled1_OutputFcn(hObject, eventdata, handles)
 	% hObject    handle to figure
 	% eventdata  reserved - to be defined in a future version of MATLAB
 	% handles    structure with handles and user data (see GUIDATA)
-
 	% Get default command line output from handles structure
 	varargout{1} = handles.output;
 
@@ -484,7 +510,6 @@ function popupmenu1_Callback(hObject, eventdata, handles)
 	% hObject    handle to popupmenu1 (see GCBO)
 	% eventdata  reserved - to be defined in a future version of MATLAB
 	% handles    structure with handles and user data (see GUIDATA)
-
 	% Hints: contents = get(hObject,'String') returns popupmenu1 contents as cell array
 	%        contents{get(hObject,'Value')} returns selected item from popupmenu1
 
@@ -501,7 +526,7 @@ function popupmenu1_CreateFcn(hObject, eventdata, handles)
 		 set(hObject,'BackgroundColor','white');
 	end
 
-	set(hObject, 'String', {'plot(rand(5))', 'plot(sin(1:0.01:25))', 'bar(1:.5:10)', 'plot(membrane)', 'surf(peaks)'});
+	set(hObject, 'String', {'Decision Trees(fitctree)'});
 
 
 % --- Executes on button press in pushbutton4.
@@ -509,8 +534,17 @@ function start_Callback(hObject, eventdata, handles)
 	% hObject    handle to pushbutton4 (see GCBO)
 	% eventdata  reserved - to be defined in a future version of MATLAB
 	% handles    structure with handles and user data (see GUIDATA)
-
-
+    global start_flag
+    if start_flag == 1
+        set(hObject,'string','Start');
+        start_flag = 2;    
+        stop(handles.ht);
+    elseif start_flag == 2
+        set(hObject,'string','Pause');
+        start_flag = 1;
+        start(handles.ht)%启动定时器,对应的stop(handles.ht) 
+    end
+    
 % --- Executes on button press in pushbutton5.
 function pause_Callback(hObject, eventdata, handles)
 	% hObject    handle to pushbutton5 (see GCBO)
@@ -518,12 +552,19 @@ function pause_Callback(hObject, eventdata, handles)
 	% handles    structure with handles and user data (see GUIDATA)
 
 
-% --- Executes on button press in pushbutton6.
-function add_sensor_Callback(hObject, eventdata, handles)
-	% hObject    handle to pushbutton6 (see GCBO)
-	% eventdata  reserved - to be defined in a future version of MATLAB
-	% handles    structure with handles and user data (see GUIDATA)
-
+% --- Executes on button press in 训练.
+function train_Callback(hObject, eventdata, handles)
+    filename = datestr(now,1);
+    filename = [filename,'_train_model.txt'];
+    A=load(filename);
+    label = A(:,1);
+    model = A(:,2:size(A,2));
+    popup_sel_index = get(handles.popupmenu1, 'Value');
+    switch popup_sel_index
+        case 1
+            rtree = fitrtree(model,label); % create classification tree
+            view(rtree,'mode','graph')
+    end
 
 % --- Executes on button press in update.
 function update_Callback(hObject, eventdata, handles)
@@ -534,9 +575,7 @@ function update_Callback(hObject, eventdata, handles)
     cla;
 
     popup_sel_index = get(handles.popupmenu1, 'Value');
-    draw_init()
     switch popup_sel_index
         case 1
         case 2
-            plot(sin(1:0.01:25.99));
     end
